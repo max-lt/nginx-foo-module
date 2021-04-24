@@ -3,7 +3,7 @@
 #include <ngx_http.h>
 
 typedef struct {
-  ngx_str_t hello;
+  ngx_str_t foo;
 } ngx_http_foo_loc_conf_t;
 
 static ngx_int_t ngx_http_foo_handler(ngx_http_request_t *r);
@@ -13,16 +13,13 @@ static ngx_int_t ngx_http_foo_init(ngx_conf_t *cf);
 static void * ngx_http_foo_create_conf(ngx_conf_t *cf);
 static char * ngx_http_foo_merge_conf(ngx_conf_t *cf, void *parent, void *child);
 
-// Declaration functions
-static char * ngx_conf_set_foo(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
-
 static ngx_command_t ngx_http_foo_commands[] = {
   // foo $variable | off | on;
   { ngx_string("foo"),
     NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-    ngx_conf_set_foo,
+    ngx_conf_set_str_slot,
     NGX_HTTP_LOC_CONF_OFFSET,
-    offsetof(ngx_http_foo_loc_conf_t, hello),
+    offsetof(ngx_http_foo_loc_conf_t, foo),
     NULL },
 
   ngx_null_command
@@ -69,14 +66,14 @@ static ngx_int_t ngx_http_foo_handler(ngx_http_request_t *r)
   ngx_int_t        rc;
   ngx_buf_t        *b;
 
-  b = ngx_create_temp_buf(r->pool, conf->hello.len);
+  b = ngx_create_temp_buf(r->pool, conf->foo.len);
   if (b == NULL) {
     ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     return NGX_DONE;
   }
 
   r->headers_out.status = NGX_HTTP_OK;
-  r->headers_out.content_length_n = conf->hello.len;
+  r->headers_out.content_length_n = conf->foo.len;
   ngx_str_set(&r->headers_out.content_type, "text/plain");
 
   /* Set header X-Foo: foo */
@@ -97,8 +94,8 @@ static ngx_int_t ngx_http_foo_handler(ngx_http_request_t *r)
   }
 
   // Write to buffer
-  size_t len = ngx_min(((size_t) (b->end - b->pos)), conf->hello.len);
-  b->last = ngx_copy(b->pos, conf->hello.data, len);
+  size_t len = ngx_min(((size_t) (b->end - b->pos)), conf->foo.len);
+  b->last = ngx_copy(b->pos, conf->foo.data, len);
   b->last_buf = 1;
   b->last_in_chain = 1;
 
@@ -138,12 +135,12 @@ static void * ngx_http_foo_create_conf(ngx_conf_t *cf)
   conf = ngx_pcalloc(cf->pool, sizeof(ngx_http_foo_loc_conf_t));
   if (conf == NULL)
   {
-    ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "JWT: conf==NULL");
+    ngx_conf_log_error(NGX_LOG_WARN, cf, 0, "foo create conf: conf==NULL");
     return NULL;
   }
 
   // Initialize variables
-  ngx_str_null(&conf->hello);
+  ngx_str_null(&conf->foo);
 
   return conf;
 }
@@ -154,30 +151,7 @@ static char * ngx_http_foo_merge_conf(ngx_conf_t *cf, void *parent, void *child)
   ngx_http_foo_loc_conf_t *prev = parent;
   ngx_http_foo_loc_conf_t *conf = child;
 
-  ngx_conf_merge_str_value(conf->hello, prev->hello, NULL);
-
-  return NGX_CONF_OK;
-}
-
-
-// Parse foo directive
-static char * ngx_conf_set_foo(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-  ngx_str_t *hello = conf;
-
-  ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "HELLO: %d", hello->len);
-
-  if (hello->len)
-  {
-    return "is duplicate";
-  }
-
-  const ngx_str_t *value = cf->args->elts;
-
-  *hello = value[1];
-
-  ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "HELLO: %d", hello->len);
-  ngx_conf_log_error(NGX_LOG_ERR, cf, 0, "HELLO: %s", hello->data);
+  ngx_conf_merge_str_value(conf->foo, prev->foo, "");
 
   return NGX_CONF_OK;
 }
