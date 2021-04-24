@@ -21,4 +21,4 @@ RUN curl -fSL http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz -o nginx.t
   && rm nginx.tar.gz
 
 RUN cd /usr/src/nginx-${NGINX_VERSION} \
-  && ./configure --builddir=src
+  && ./configure

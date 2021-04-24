@@ -18,6 +18,7 @@ Set .vscode/c_cpp_properties.json
       "includePath": [
         "${workspaceFolder}/src",
         "${workspaceFolder}/dev/src",
+        "${workspaceFolder}/dev/objs",
         "${workspaceFolder}/dev/src/core",
         "${workspaceFolder}/dev/src/http",
         "${workspaceFolder}/dev/src/http/modules",

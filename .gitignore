@@ -2,4 +2,5 @@
 .idea/**
 *.so
 
-dev/src/**
+dev/**
+!dev/nginx/**
