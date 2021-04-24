@@ -1,0 +1,24 @@
+FROM nginx:1.19.10-alpine
+
+RUN apk add \
+  # nginx
+  gcc \
+  libc-dev \
+  make \
+  openssl-dev \
+  pcre-dev \
+  zlib-dev \
+  linux-headers \
+  curl \
+  gnupg \
+  libxslt-dev \
+  gd-dev
+
+# Download and extract nginx source code
+RUN curl -fSL http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz -o nginx.tar.gz \
+  && mkdir -p /usr/src \
+  && tar -zxC /usr/src -f nginx.tar.gz \
+  && rm nginx.tar.gz
+
+RUN cd /usr/src/nginx-${NGINX_VERSION} \
+  && ./configure --builddir=src
