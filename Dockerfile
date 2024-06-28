@@ -1,7 +1,9 @@
-FROM nginx:1.19.10-alpine as base
+FROM nginx:1.27.0-alpine3.19 as base
 
 # Download and extract nginx source code
-FROM base as prepare
+FROM base as builder
+
+ARG FOO_MODULE_PATH=/usr/local/lib/ngx-foo-module
 
 RUN apk add --no-cache \
   # nginx
@@ -22,13 +24,6 @@ RUN curl -fSL http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz -o nginx.t
   && tar -zxC /usr/src -f nginx.tar.gz \
   && rm nginx.tar.gz
 
-# Compile module
-FROM prepare as builder
-
-ARG FOO_MODULE_PATH=/usr/local/lib/ngx-foo-module
-
-RUN mkdir -p $FOO_MODULE_PATH/src
-
 ADD config $FOO_MODULE_PATH/config
 ADD src $FOO_MODULE_PATH/src
 
@@ -37,7 +32,7 @@ RUN cd /usr/src/nginx-${NGINX_VERSION} \
   && make modules
 
 # Add module to base image
-FROM base
+FROM base as foo-nginx
 
 COPY --from=builder /usr/src/nginx-${NGINX_VERSION}/objs/ngx_http_foo_module.so /usr/lib/nginx/modules/ngx_http_foo_module.so
 

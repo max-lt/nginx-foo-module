@@ -1,6 +1,5 @@
-.vscode/**
-.idea/**
 *.so
+*.tar.gz
 
-dev/**
-!dev/nginx/**
+dev/objs/**
+dev/src/**
