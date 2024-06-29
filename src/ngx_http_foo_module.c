@@ -57,61 +57,52 @@ ngx_module_t ngx_http_foo_module = {
 };
 
 
+// https://nginx.org/en/docs/dev/development_guide.html#http_response_body
 static ngx_int_t ngx_http_foo_handler(ngx_http_request_t *r)
 {
-  const ngx_http_foo_loc_conf_t *conf;
-  conf = ngx_http_get_module_loc_conf(r, ngx_http_foo_module);
+    const ngx_http_foo_loc_conf_t *conf = ngx_http_get_module_loc_conf(r, ngx_http_foo_module);
 
-  // Decline if foo is off
-  if (!conf->foo)
-  {
-    return NGX_DECLINED;
-  }
+    // Decline if foo is off
+    if (conf->foo < 1)
+    {
+      return NGX_DECLINED;
+    }
 
-  ngx_chain_t      out;
-  ngx_int_t        rc;
-  ngx_buf_t        *b;
-  ngx_str_t        message = ngx_string("Hello Foo!");
+    ngx_int_t     rc;
+    ngx_buf_t    *b;
+    ngx_chain_t   out;
+    ngx_str_t     message = ngx_string("Hello Foo!");
 
-  r->headers_out.status = NGX_HTTP_OK;
-  r->headers_out.content_length_n = message.len;
-  ngx_str_set(&r->headers_out.content_type, "text/plain");
+    /* send header */
 
-  /* Set header X-Foo: foo */
-  ngx_table_elt_t  *h = ngx_list_push(&r->headers_out.headers);
-  if (h == NULL) {
-      return NGX_ERROR;
-  }
+    r->headers_out.status = NGX_HTTP_OK;
+    r->headers_out.content_length_n = message.len;
 
-  h->hash = 1;
-  ngx_str_set(&h->key, "X-Foo");
-  ngx_str_set(&h->value, "foo");
+    rc = ngx_http_send_header(r);
 
-  rc = ngx_http_send_header(r);
+    if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
+        return rc;
+    }
 
-  if (rc == NGX_ERROR || rc > NGX_OK || r->header_only) {
-    ngx_http_finalize_request(r, rc);
-    return NGX_DONE;
-  }
+    /* send body */
 
-  // Write to buffer
-  b = ngx_create_temp_buf(r->pool, message.len);
-  if (b == NULL) {
-    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-    return NGX_DONE;
-  }
+    b = ngx_calloc_buf(r->pool);
+    if (b == NULL) {
+        return NGX_ERROR;
+    }
 
-  b->last = ngx_copy(b->pos, message.data, message.len);
-  b->last_buf = 1;
-  b->last_in_chain = 1;
+    b->last_buf = (r == r->main) ? 1 : 0;
+    b->last_in_chain = 1;
 
-  out.buf = b;
-  out.next = NULL;
+    b->memory = 1;
 
-  rc = ngx_http_output_filter(r, &out);
-  ngx_http_finalize_request(r, rc);
+    b->pos = message.data;
+    b->last = b->pos + message.len;
 
-  return NGX_DONE;
+    out.buf = b;
+    out.next = NULL;
+
+    return ngx_http_output_filter(r, &out);
 }
 
 
