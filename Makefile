@@ -16,7 +16,7 @@ setup-dev-headers: cleanup-dev-headers docker-dev-headers-image
 docker-image:
 	@docker build -t foo-nginx .
 
-docker-run:
+docker-run: docker-image src/ngx_http_foo_module.c
 	@docker run --rm --name foo-nginx-container -p 8000:80 -v ${scriptpath}/dev/nginx.conf:/etc/nginx/nginx.conf:ro foo-nginx
 
 clear:

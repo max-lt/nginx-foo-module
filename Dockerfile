@@ -1,28 +1,22 @@
-FROM nginx:1.27.0-alpine3.19 as base
+FROM nginx:1.27.0-alpine3.19-slim as base
 
-# Download and extract nginx source code
 FROM base as builder
 
 ARG FOO_MODULE_PATH=/usr/local/lib/ngx-foo-module
 
-RUN apk add --no-cache \
+RUN apk add --no-cache --virtual .build-deps \
   # nginx
   gcc \
   libc-dev \
-  make \
-  openssl-dev \
   pcre-dev \
   zlib-dev \
   linux-headers \
-  curl \
-  gnupg \
-  libxslt-dev \
-  gd-dev
+  make \
+  curl
 
-RUN curl -fSL http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz -o nginx.tar.gz \
-  && mkdir -p /usr/src \
-  && tar -zxC /usr/src -f nginx.tar.gz \
-  && rm nginx.tar.gz
+# Download and extract nginx source code
+RUN mkdir -p /usr/src \
+  && curl -fSL http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz | tar -zxC /usr/src
 
 ADD config $FOO_MODULE_PATH/config
 ADD src $FOO_MODULE_PATH/src

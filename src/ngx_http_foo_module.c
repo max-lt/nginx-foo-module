@@ -3,7 +3,7 @@
 #include <ngx_http.h>
 
 typedef struct {
-  ngx_str_t foo;
+  ngx_flag_t foo;
 } ngx_http_foo_loc_conf_t;
 
 static ngx_int_t ngx_http_foo_handler(ngx_http_request_t *r);
@@ -14,10 +14,10 @@ static void * ngx_http_foo_create_conf(ngx_conf_t *cf);
 static char * ngx_http_foo_merge_conf(ngx_conf_t *cf, void *parent, void *child);
 
 static ngx_command_t ngx_http_foo_commands[] = {
-  // foo $variable | off | on;
+  // Syntax: foo on | off; Default: foo off;
   { ngx_string("foo"),
-    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-    ngx_conf_set_str_slot,
+    NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_FLAG,
+    ngx_conf_set_flag_slot,
     NGX_HTTP_LOC_CONF_OFFSET,
     offsetof(ngx_http_foo_loc_conf_t, foo),
     NULL },
@@ -28,7 +28,7 @@ static ngx_command_t ngx_http_foo_commands[] = {
 
 static ngx_http_module_t ngx_http_foo_module_ctx = {
   NULL,                          /* preconfiguration */
-  ngx_http_foo_init,      /* postconfiguration */
+  ngx_http_foo_init,             /* postconfiguration */
 
   NULL,                          /* create main configuration */
   NULL,                          /* init main configuration */
@@ -62,18 +62,19 @@ static ngx_int_t ngx_http_foo_handler(ngx_http_request_t *r)
   const ngx_http_foo_loc_conf_t *conf;
   conf = ngx_http_get_module_loc_conf(r, ngx_http_foo_module);
 
+  // Decline if foo is off
+  if (!conf->foo)
+  {
+    return NGX_DECLINED;
+  }
+
   ngx_chain_t      out;
   ngx_int_t        rc;
   ngx_buf_t        *b;
-
-  b = ngx_create_temp_buf(r->pool, conf->foo.len);
-  if (b == NULL) {
-    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
-    return NGX_DONE;
-  }
+  ngx_str_t        message = ngx_string("Hello Foo!");
 
   r->headers_out.status = NGX_HTTP_OK;
-  r->headers_out.content_length_n = conf->foo.len;
+  r->headers_out.content_length_n = message.len;
   ngx_str_set(&r->headers_out.content_type, "text/plain");
 
   /* Set header X-Foo: foo */
@@ -83,7 +84,7 @@ static ngx_int_t ngx_http_foo_handler(ngx_http_request_t *r)
   }
 
   h->hash = 1;
-  ngx_str_set(&h->key, "ETag");
+  ngx_str_set(&h->key, "X-Foo");
   ngx_str_set(&h->value, "foo");
 
   rc = ngx_http_send_header(r);
@@ -94,8 +95,13 @@ static ngx_int_t ngx_http_foo_handler(ngx_http_request_t *r)
   }
 
   // Write to buffer
-  size_t len = ngx_min(((size_t) (b->end - b->pos)), conf->foo.len);
-  b->last = ngx_copy(b->pos, conf->foo.data, len);
+  b = ngx_create_temp_buf(r->pool, message.len);
+  if (b == NULL) {
+    ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
+    return NGX_DONE;
+  }
+
+  b->last = ngx_copy(b->pos, message.data, message.len);
   b->last_buf = 1;
   b->last_in_chain = 1;
 
@@ -116,7 +122,7 @@ static ngx_int_t ngx_http_foo_init(ngx_conf_t *cf)
 
   cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
 
-  h = ngx_array_push(&cmcf->phases[NGX_HTTP_PRECONTENT_PHASE].handlers);
+  h = ngx_array_push(&cmcf->phases[NGX_HTTP_CONTENT_PHASE].handlers);
   if (h == NULL)
   {
     return NGX_ERROR;
@@ -140,7 +146,7 @@ static void * ngx_http_foo_create_conf(ngx_conf_t *cf)
   }
 
   // Initialize variables
-  ngx_str_null(&conf->foo);
+  conf->foo = NGX_CONF_UNSET;
 
   return conf;
 }
@@ -151,7 +157,7 @@ static char * ngx_http_foo_merge_conf(ngx_conf_t *cf, void *parent, void *child)
   ngx_http_foo_loc_conf_t *prev = parent;
   ngx_http_foo_loc_conf_t *conf = child;
 
-  ngx_conf_merge_str_value(conf->foo, prev->foo, "");
+  ngx_conf_merge_value(conf->foo, prev->foo, 0);
 
   return NGX_CONF_OK;
 }

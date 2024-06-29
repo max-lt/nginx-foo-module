@@ -1,18 +1,14 @@
-FROM nginx:1.27.0-alpine3.19
+FROM nginx:1.27.0-alpine3.19-slim
 
 RUN apk add \
   gcc \
   libc-dev \
   make \
-  zlib-dev \
-  gnupg \
-  gd-dev
+  curl
 
 # Download and extract nginx source code
-RUN curl -fSL http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz -o nginx.tar.gz \
-  && mkdir -p /usr/src \
-  && tar -zxC /usr/src -f nginx.tar.gz \
-  && rm nginx.tar.gz
+RUN mkdir -p /usr/src \
+  && curl -fSL http://nginx.org/download/nginx-${NGINX_VERSION}.tar.gz | tar -zxC /usr/src
 
 RUN cd /usr/src/nginx-${NGINX_VERSION} \
   && ./configure \
